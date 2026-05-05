@@ -1,18 +1,12 @@
 
-package com.example.taxi_ride.model; // Updated package name
+package com.example.taxi_ride.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Data @AllArgsConstructor @NoArgsConstructor
-class Location {
-    private double lat;
-    private double lng;
-}
-
-@Data @AllArgsConstructor @NoArgsConstructor
-public class RideModels { // Changed class name to match file
+public class RideModels {
     private String id;
     private String riderName;
     private Location pickup;
