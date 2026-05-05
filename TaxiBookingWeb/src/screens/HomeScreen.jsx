@@ -25,10 +25,10 @@ function HomeScreen({ onNavigate }) {
         
         <button 
           className="button secondary"
-          onClick={() => {}}
+          onClick={() => onNavigate('driver')}
           style={{ width: '100%' }}
         >
-          👤 Profile
+          👤 Driver Mode
         </button>
         
         <button 

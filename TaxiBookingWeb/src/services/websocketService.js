@@ -1,22 +1,23 @@
 import { Client } from '@stomp/stompjs';
 
 let stompClient = null;
-let onLocationUpdate = null;
-let onRideUpdate = null;
+let locationListeners = [];
+let rideListeners = [];
 
 // NOTE: Using native WebSocket (no SockJS) to avoid browser-only package issues.
 // The Spring SockJS endpoint usually exposes a websocket transport at /ws-ride/websocket
 const WS_URL = 'ws://localhost:8090/ws-ride/websocket';
 
 export const websocketService = {
-  connect: (onLocationCallback, onRideCallback) => {
+  connect: () => {
     return new Promise((resolve, reject) => {
       try {
-        onLocationUpdate = onLocationCallback;
-        onRideUpdate = onRideCallback;
+        if (stompClient && stompClient.connected) {
+          resolve();
+          return;
+        }
 
         stompClient = new Client({
-          // Use brokerURL to connect via native WebSocket
           brokerURL: WS_URL,
           connectHeaders: {},
           debug: (msg) => {
@@ -28,7 +29,7 @@ export const websocketService = {
             stompClient.subscribe('/topic/ride-location', (message) => {
               try {
                 const data = JSON.parse(message.body);
-                if (onLocationUpdate) onLocationUpdate(data);
+                locationListeners.forEach((cb) => cb && cb(data));
               } catch (e) {
                 console.error('Error parsing location message:', e);
               }
@@ -37,7 +38,7 @@ export const websocketService = {
             stompClient.subscribe('/topic/ride-status', (message) => {
               try {
                 const data = JSON.parse(message.body);
-                if (onRideUpdate) onRideUpdate(data);
+                rideListeners.forEach((cb) => cb && cb(data));
               } catch (e) {
                 console.error('Error parsing ride status message:', e);
               }
@@ -70,6 +71,24 @@ export const websocketService = {
       }
       stompClient = null;
     }
+  },
+
+  addLocationListener: (cb) => {
+    if (typeof cb === 'function') {
+      locationListeners.push(cb);
+    }
+    return () => {
+      locationListeners = locationListeners.filter((f) => f !== cb);
+    };
+  },
+
+  addRideListener: (cb) => {
+    if (typeof cb === 'function') {
+      rideListeners.push(cb);
+    }
+    return () => {
+      rideListeners = rideListeners.filter((f) => f !== cb);
+    };
   },
 
   sendLocationUpdate: (rideId, latitude, longitude) => {

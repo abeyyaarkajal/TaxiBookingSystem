@@ -5,6 +5,7 @@ import LocationSelectionScreen from './screens/LocationSelectionScreen';
 import FareEstimateScreen from './screens/FareEstimateScreen';
 import SearchingDriverScreen from './screens/SearchingDriverScreen';
 import DriverAssignedScreen from './screens/DriverAssignedScreen';
+import DriverDashboard from './screens/DriverDashboard';
 import LiveTrackingScreen from './screens/LiveTrackingScreen';
 import TripSummaryScreen from './screens/TripSummaryScreen';
 import websocketService from './services/websocketService';
@@ -18,28 +19,27 @@ function App() {
     // Initialize WebSocket connection
     const initializeWebSocket = async () => {
       try {
-        await websocketService.connect(
-          (locationData) => {
-            // Handle location update
-            console.log('Location update:', locationData);
-            if (rideData) {
-              setRideData({
-                ...rideData,
-                driverLocation: locationData,
-              });
-            }
-          },
-          (rideUpdate) => {
-            // Handle ride status update
-            console.log('Ride update:', rideUpdate);
-            if (rideData) {
-              setRideData({
-                ...rideData,
-                status: rideUpdate.status,
-              });
-            }
+        await websocketService.connect();
+        // register listeners
+        websocketService.addLocationListener((locationData) => {
+          console.log('Location update:', locationData);
+          if (rideData) {
+            setRideData({
+              ...rideData,
+              driverLocation: locationData,
+            });
           }
-        );
+        });
+
+        websocketService.addRideListener((rideUpdate) => {
+          console.log('Ride update:', rideUpdate);
+          if (rideData) {
+            setRideData({
+              ...rideData,
+              status: rideUpdate.status,
+            });
+          }
+        });
       } catch (error) {
         console.error('WebSocket connection failed:', error);
         setError('Real-time updates unavailable. You can still book rides.');
@@ -72,6 +72,8 @@ function App() {
         return <SearchingDriverScreen onNavigate={navigateTo} rideData={rideData} />;
       case 'assigned':
         return <DriverAssignedScreen onNavigate={navigateTo} rideData={rideData} />;
+      case 'driver':
+        return <DriverDashboard onNavigate={navigateTo} />;
       case 'tracking':
         return <LiveTrackingScreen onNavigate={navigateTo} rideData={rideData} />;
       case 'summary':

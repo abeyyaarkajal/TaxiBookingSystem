@@ -18,9 +18,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Allow only the local frontend during development to avoid CORS errors when credentials are enabled
         registry.addEndpoint("/ws-ride")
-                .setAllowedOrigins("*")
-                .withSockJS();
+            .setAllowedOriginPatterns("http://localhost:3000")
+            .withSockJS();
     }
 }
 

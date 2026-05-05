@@ -17,10 +17,10 @@ export const rideAPI = {
   estimateFare: async (pickupLat, pickupLng, dropoffLat, dropoffLng) => {
     try {
       const response = await api.post('/rides/estimate-fare', {
-        pickupLatitude: pickupLat,
-        pickupLongitude: pickupLng,
-        dropoffLatitude: dropoffLat,
-        dropoffLongitude: dropoffLng,
+        pickupLat: pickupLat,
+        pickupLng: pickupLng,
+        dropLat: dropoffLat,
+        dropLng: dropoffLng,
       });
       return response.data;
     } catch (error) {
@@ -30,14 +30,16 @@ export const rideAPI = {
   },
 
   // Request a ride
-  requestRide: async (riderId, pickupLat, pickupLng, dropoffLat, dropoffLng, fare) => {
+  requestRide: async (riderId, pickupLat, pickupLng, dropoffLat, dropoffLng, fare, pickupAddress = '', dropAddress = '') => {
     try {
       const response = await api.post('/rides/request', {
         riderId,
-        pickupLatitude: pickupLat,
-        pickupLongitude: pickupLng,
-        dropoffLatitude: dropoffLat,
-        dropoffLongitude: dropoffLng,
+        pickupLat: pickupLat,
+        pickupLng: pickupLng,
+        dropLat: dropoffLat,
+        dropLng: dropoffLng,
+        pickupAddress,
+        dropAddress,
         estimatedFare: fare,
       });
       return response.data;
