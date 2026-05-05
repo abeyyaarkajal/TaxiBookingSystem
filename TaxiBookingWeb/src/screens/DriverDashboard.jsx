@@ -1,155 +1,182 @@
-import React, { useEffect, useState, useRef } from 'react';
-import websocketService from '../services/websocketService';
+import React, { useState, useEffect } from 'react';
+import { websocketService } from '../services/websocketService';
 
 function DriverDashboard({ onNavigate }) {
-  const DRIVER_ID = 'DRIVER001';
   const [online, setOnline] = useState(false);
   const [currentRequest, setCurrentRequest] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(15);
   const [activeRide, setActiveRide] = useState(null);
-  const timerRef = useRef(null);
 
   useEffect(() => {
-    let removeListener = null;
-    const init = async () => {
-      try {
-        await websocketService.connect();
-        removeListener = websocketService.addRideListener(handleRideUpdate);
-      } catch (e) {
-        console.error('WS connect failed in driver dashboard', e);
+    websocketService.connect();
+
+    const handleRideRequest = (request) => {
+      if (online) {
+        setCurrentRequest(request);
+        setTimeLeft(15);
       }
     };
 
-    init();
+    websocketService.addRideListener(handleRideRequest);
 
     return () => {
-      if (removeListener) removeListener();
-      clearInterval(timerRef.current);
+      websocketService.removeRideListener(handleRideRequest);
     };
-  }, []);
+  }, [online]);
 
-  const handleRideUpdate = (ride) => {
-    // Expecting ride = { rideId, status, pickupDistance, estimatedFare, driverId }
-    if (!online) return;
-    if (!ride) return;
-    if (ride.status === 'REQUESTED' && !currentRequest && !activeRide) {
-      if (!ride.driverId || ride.driverId === DRIVER_ID) {
-        setCurrentRequest({
-          rideId: ride.rideId || ride.id || 'unknown',
-          pickupDistance: ride.pickupDistance || ride.distance || 'N/A',
-          estimatedFare: ride.estimatedFare || ride.fare || 'N/A',
-          timeLeft: 15,
-        });
-        startRequestTimer();
-      }
-    }
-  };
+  useEffect(() => {
+    if (!currentRequest) return;
 
-  const startRequestTimer = () => {
-    clearInterval(timerRef.current);
-    timerRef.current = setInterval(() => {
-      setCurrentRequest((prev) => {
-        if (!prev) return null;
-        if (prev.timeLeft <= 1) {
-          clearInterval(timerRef.current);
-          // auto reject
-          websocketService.sendRideUpdate(prev.rideId, 'REJECTED', 'Auto-rejected');
-          return null;
+    const interval = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 1) {
+          handleRejectRequest();
+          return 15;
         }
-        return { ...prev, timeLeft: prev.timeLeft - 1 };
+        return prev - 1;
       });
     }, 1000);
-  };
 
-  const acceptRide = () => {
-    if (!currentRequest) return;
-    websocketService.sendRideUpdate(currentRequest.rideId, 'ACCEPTED', `Driver ${DRIVER_ID} accepted`);
-    setActiveRide({ ...currentRequest });
-    clearInterval(timerRef.current);
+    return () => clearInterval(interval);
+  }, [currentRequest]);
+
+  const handleAcceptRequest = () => {
+    websocketService.send('/app/ride-accept', {
+      rideId: currentRequest?.id || 1,
+      driverId: 1,
+      status: 'ACCEPTED',
+    });
+    setActiveRide(currentRequest);
     setCurrentRequest(null);
   };
 
-  const rejectRide = () => {
-    if (!currentRequest) return;
-    websocketService.sendRideUpdate(currentRequest.rideId, 'REJECTED', `Driver ${DRIVER_ID} rejected`);
-    clearInterval(timerRef.current);
+  const handleRejectRequest = () => {
+    websocketService.send('/app/ride-reject', {
+      rideId: currentRequest?.id || 1,
+      driverId: 1,
+      status: 'REJECTED',
+    });
     setCurrentRequest(null);
   };
 
-  const startTrip = () => {
-    if (!activeRide) return;
-    websocketService.sendRideUpdate(activeRide.rideId, 'STARTED', `Driver started trip`);
+  const handleStartTrip = () => {
+    websocketService.send('/app/ride-start', {
+      rideId: activeRide?.id || 1,
+      driverId: 1,
+      status: 'STARTED',
+    });
   };
 
-  const completeTrip = () => {
-    if (!activeRide) return;
-    websocketService.sendRideUpdate(activeRide.rideId, 'COMPLETED', `Driver completed trip`);
+  const handleCompleteTrip = () => {
+    websocketService.send('/app/ride-complete', {
+      rideId: activeRide?.id || 1,
+      driverId: 1,
+      status: 'COMPLETED',
+    });
     setActiveRide(null);
+  };
+
+  const handleSimulateRequest = () => {
+    const simulatedRequest = {
+      id: Math.floor(Math.random() * 1000),
+      riderId: Math.floor(Math.random() * 1000),
+      pickupLocation: 'Connaught Place',
+      dropoffLocation: 'IGI Airport',
+      fare: 450,
+    };
+    setCurrentRequest(simulatedRequest);
+    setTimeLeft(15);
   };
 
   return (
     <div className="screen">
       <div className="header">Driver Dashboard</div>
 
-      <div style={{ margin: '20px 0' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <input
-            type="checkbox"
-            checked={online}
-            onChange={(e) => setOnline(e.target.checked)}
-          />
-          <strong style={{ color: online ? '#16a34a' : '#666' }}>{online ? 'Online' : 'Offline'}</strong>
-        </label>
-        <div style={{ marginTop: '8px', color: '#666' }}>
-          Toggle online to receive ride requests.
-        </div>
-      </div>
-
-      {currentRequest && (
-        <div className="card" style={{ border: '1px solid #f2c0c0', background: '#fff7f7' }}>
-          <h3>Incoming Ride Request</h3>
-          <p><strong>Ride:</strong> {currentRequest.rideId}</p>
-          <p><strong>Pickup Distance:</strong> {currentRequest.pickupDistance} km</p>
-          <p><strong>Estimated Fare:</strong> ₹{currentRequest.estimatedFare}</p>
-          <p style={{ fontWeight: 'bold' }}>Time left: {currentRequest.timeLeft}s</p>
-
-          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-            <button className="button" onClick={acceptRide}>Accept</button>
-            <button className="button secondary" onClick={rejectRide}>Reject</button>
-          </div>
-        </div>
-      )}
-
-      {activeRide && (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Status Toggle */}
         <div className="card">
-          <h3>Active Ride</h3>
-          <p><strong>Ride:</strong> {activeRide.rideId}</p>
-          <p><strong>Pickup Distance:</strong> {activeRide.pickupDistance} km</p>
-          <p><strong>Estimated Fare:</strong> ₹{activeRide.estimatedFare}</p>
-
-          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-            <button className="button" onClick={startTrip}>Mark Started</button>
-            <button className="button" onClick={completeTrip}>Mark Completed</button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3>Status</h3>
+            <button
+              className={online ? 'button' : 'button secondary'}
+              onClick={() => setOnline(!online)}
+              style={{ width: '100px' }}
+            >
+              {online ? '🟢 Online' : '⚫ Offline'}
+            </button>
           </div>
         </div>
-      )}
 
-      <div style={{ marginTop: '20px' }}>
-        <button className="button secondary" onClick={() => onNavigate('home')}>Back to Home</button>
+        {/* Incoming Request Popup */}
+        {currentRequest && (
+          <div className="card" style={{ backgroundColor: '#fff3cd', borderLeft: '4px solid #ffc107' }}>
+            <h3 style={{ color: '#ff6b6b', marginBottom: '10px' }}>
+              ⏰ New Ride Request!
+            </h3>
+            <p style={{ fontSize: '14px', marginBottom: '10px' }}>
+              From: <strong>{currentRequest.pickupLocation}</strong>
+            </p>
+            <p style={{ fontSize: '14px', marginBottom: '10px' }}>
+              To: <strong>{currentRequest.dropoffLocation}</strong>
+            </p>
+            <p style={{ fontSize: '14px', marginBottom: '10px' }}>
+              Fare: <strong>₹{currentRequest.fare}</strong>
+            </p>
+            <div style={{ fontSize: '24px', color: '#ff6b6b', fontWeight: 'bold', marginBottom: '10px', textAlign: 'center' }}>
+              {timeLeft}s
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className="button" onClick={handleAcceptRequest} style={{ flex: 1 }}>
+                ✓ Accept
+              </button>
+              <button className="button secondary" onClick={handleRejectRequest} style={{ flex: 1 }}>
+                ✕ Reject
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Active Ride Management */}
+        {activeRide && (
+          <div className="card" style={{ backgroundColor: '#e7f3ff', borderLeft: '4px solid #667eea' }}>
+            <h3 style={{ marginBottom: '10px' }}>🚗 Active Ride</h3>
+            <p style={{ fontSize: '14px', marginBottom: '10px' }}>
+              Rider: <strong>ID {activeRide.riderId}</strong>
+            </p>
+            <p style={{ fontSize: '14px', marginBottom: '10px' }}>
+              From: <strong>{activeRide.pickupLocation}</strong>
+            </p>
+            <p style={{ fontSize: '14px', marginBottom: '10px' }}>
+              To: <strong>{activeRide.dropoffLocation}</strong>
+            </p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className="button" onClick={handleStartTrip} style={{ flex: 1 }}>
+                ▶ Start Trip
+              </button>
+              <button className="button" onClick={handleCompleteTrip} style={{ flex: 1, backgroundColor: '#27ae60' }}>
+                ✓ Complete
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Testing Helper */}
+        {!currentRequest && online && (
+          <button
+            className="button secondary"
+            onClick={handleSimulateRequest}
+            style={{ width: '100%', marginTop: 'auto' }}
+          >
+            🧪 Simulate Request
+          </button>
+        )}
+
         <button
-          className="button"
-          style={{ marginLeft: '10px' }}
-          onClick={() => {
-            // simulate an incoming ride request for manual testing
-            handleRideUpdate({
-              rideId: `SIM-${Date.now()}`,
-              status: 'REQUESTED',
-              pickupDistance: (Math.random() * 5).toFixed(1),
-              estimatedFare: (50 + Math.random() * 200).toFixed(0),
-              driverId: null,
-            });
-          }}
+          className="button secondary"
+          onClick={() => onNavigate('home')}
+          style={{ width: '100%', marginTop: '10px' }}
         >
-          Simulate Request
+          ← Back to Home
         </button>
       </div>
     </div>

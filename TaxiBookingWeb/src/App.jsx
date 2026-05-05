@@ -1,95 +1,53 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useState } from 'react';
+import './index.css';
+import { websocketService } from './services/websocketService';
 import HomeScreen from './screens/HomeScreen';
 import LocationSelectionScreen from './screens/LocationSelectionScreen';
 import FareEstimateScreen from './screens/FareEstimateScreen';
 import SearchingDriverScreen from './screens/SearchingDriverScreen';
 import DriverAssignedScreen from './screens/DriverAssignedScreen';
-import DriverDashboard from './screens/DriverDashboard';
 import LiveTrackingScreen from './screens/LiveTrackingScreen';
 import TripSummaryScreen from './screens/TripSummaryScreen';
-import websocketService from './services/websocketService';
+import DriverDashboard from './screens/DriverDashboard';
 
 function App() {
-  const [rideData, setRideData] = useState(null);
   const [currentScreen, setCurrentScreen] = useState('home');
-  const [error, setError] = useState(null);
+  const [rideData, setRideData] = useState(null);
 
-  useEffect(() => {
-    // Initialize WebSocket connection
-    const initializeWebSocket = async () => {
-      try {
-        await websocketService.connect();
-        // register listeners
-        websocketService.addLocationListener((locationData) => {
-          console.log('Location update:', locationData);
-          if (rideData) {
-            setRideData({
-              ...rideData,
-              driverLocation: locationData,
-            });
-          }
-        });
+  websocketService.connect();
 
-        websocketService.addRideListener((rideUpdate) => {
-          console.log('Ride update:', rideUpdate);
-          if (rideData) {
-            setRideData({
-              ...rideData,
-              status: rideUpdate.status,
-            });
-          }
-        });
-      } catch (error) {
-        console.error('WebSocket connection failed:', error);
-        setError('Real-time updates unavailable. You can still book rides.');
-      }
-    };
-
-    initializeWebSocket();
-
-    return () => {
-      websocketService.disconnect();
-    };
-  }, []);
-
-  const navigateTo = (screen, data = null) => {
-    if (data) {
-      setRideData({ ...rideData, ...data });
-    }
+  const handleNavigate = (screen, data = null) => {
     setCurrentScreen(screen);
+    if (data) {
+      setRideData(data);
+    }
   };
 
   const renderScreen = () => {
     switch (currentScreen) {
       case 'home':
-        return <HomeScreen onNavigate={navigateTo} />;
+        return <HomeScreen onNavigate={handleNavigate} />;
       case 'location':
-        return <LocationSelectionScreen onNavigate={navigateTo} rideData={rideData} />;
+        return <LocationSelectionScreen onNavigate={handleNavigate} rideData={rideData} />;
       case 'fare':
-        return <FareEstimateScreen onNavigate={navigateTo} rideData={rideData} />;
+        return <FareEstimateScreen onNavigate={handleNavigate} rideData={rideData} />;
       case 'searching':
-        return <SearchingDriverScreen onNavigate={navigateTo} rideData={rideData} />;
+        return <SearchingDriverScreen onNavigate={handleNavigate} rideData={rideData} />;
       case 'assigned':
-        return <DriverAssignedScreen onNavigate={navigateTo} rideData={rideData} />;
-      case 'driver':
-        return <DriverDashboard onNavigate={navigateTo} />;
+        return <DriverAssignedScreen onNavigate={handleNavigate} rideData={rideData} />;
       case 'tracking':
-        return <LiveTrackingScreen onNavigate={navigateTo} rideData={rideData} />;
+        return <LiveTrackingScreen onNavigate={handleNavigate} rideData={rideData} />;
       case 'summary':
-        return <TripSummaryScreen onNavigate={navigateTo} rideData={rideData} />;
+        return <TripSummaryScreen onNavigate={handleNavigate} rideData={rideData} />;
+      case 'driver':
+        return <DriverDashboard onNavigate={handleNavigate} />;
       default:
-        return <HomeScreen onNavigate={navigateTo} />;
+        return <HomeScreen onNavigate={handleNavigate} />;
     }
   };
 
   return (
-    <div className="container">
-      {error && (
-        <div className="info" style={{ margin: '10px' }}>
-          ⚠️ {error}
-        </div>
-      )}
+    <div className="app-container">
       {renderScreen()}
     </div>
   );
