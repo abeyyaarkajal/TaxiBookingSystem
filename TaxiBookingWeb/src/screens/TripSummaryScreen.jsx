@@ -1,0 +1,109 @@
+import React, { useState } from 'react';
+import { rideAPI } from '../services/rideAPI';
+
+function TripSummaryScreen({ onNavigate, rideData }) {
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = async () => {
+    try {
+      await rideAPI.rateRide(rideData?.rideId || 1, rating, comment);
+      setSubmitted(true);
+      setTimeout(() => onNavigate('home'), 2000);
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      alert('Failed to submit rating. Please try again.');
+    }
+  };
+
+  if (submitted) {
+    return (
+      <div className="screen">
+        <div className="header">Thank You!</div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+          <div style={{ fontSize: '80px', marginBottom: '20px' }}>✅</div>
+          <h2>Ride Completed</h2>
+          <p style={{ color: '#999', marginTop: '10px' }}>Thank you for using Taxi Booking System</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="screen">
+      <div className="header">Rate Your Ride</div>
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div className="card">
+          <h3 style={{ textAlign: 'center', marginBottom: '20px' }}>Trip Summary</h3>
+          <div style={{ fontSize: '14px', color: '#666' }}>
+            <p>From: Pickup Location</p>
+            <p>To: Dropoff Location</p>
+            <p>Distance: 12.5 km</p>
+            <p style={{ fontWeight: 'bold', marginTop: '10px' }}>Total: ₹250</p>
+          </div>
+        </div>
+
+        <div className="card">
+          <h4>Rate Your Driver</h4>
+          <div style={{ textAlign: 'center', margin: '20px 0' }}>
+            <div style={{ fontSize: '48px', marginBottom: '10px' }}>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <span
+                  key={i}
+                  onClick={() => setRating(i + 1)}
+                  style={{
+                    cursor: 'pointer',
+                    color: i < rating ? '#ffc107' : '#ddd',
+                    marginRight: '10px',
+                  }}
+                >
+                  ⭐
+                </span>
+              ))}
+            </div>
+            <p style={{ color: '#667eea', fontWeight: 'bold' }}>{rating}.0 / 5.0</p>
+          </div>
+        </div>
+
+        <div className="card">
+          <h4>Comments</h4>
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Optional: Share your feedback"
+            style={{
+              width: '100%',
+              height: '80px',
+              padding: '10px',
+              borderRadius: '8px',
+              border: '1px solid #ddd',
+              fontSize: '14px',
+              fontFamily: 'inherit',
+              marginTop: '10px',
+            }}
+          />
+        </div>
+
+        <button
+          className="button"
+          onClick={handleSubmit}
+          style={{ width: '100%' }}
+        >
+          ✓ Submit Rating
+        </button>
+
+        <button
+          className="button secondary"
+          onClick={() => onNavigate('home')}
+          style={{ width: '100%' }}
+        >
+          ← Home
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default TripSummaryScreen;

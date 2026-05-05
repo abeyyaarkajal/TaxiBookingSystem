@@ -1,0 +1,100 @@
+import React, { useState } from 'react';
+import { rideAPI } from '../services/rideAPI';
+
+function LocationSelectionScreen({ onNavigate, rideData }) {
+  const [pickupLat, setPickupLat] = useState(28.6139);
+  const [pickupLng, setPickupLng] = useState(77.2090);
+  const [pickupLocation, setPickupLocation] = useState('New Delhi, India');
+  const [dropoffLat, setDropoffLat] = useState(28.7041);
+  const [dropoffLng, setDropoffLng] = useState(77.1025);
+  const [dropoffLocation, setDropoffLocation] = useState('Agra, India');
+  const [error, setError] = useState(null);
+
+  const handleGetLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setPickupLat(position.coords.latitude);
+          setPickupLng(position.coords.longitude);
+          setPickupLocation(`${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
+        },
+        () => setError('Unable to get your location. Please enter manually.')
+      );
+    }
+  };
+
+  const handleEstimateFare = async () => {
+    try {
+      const finalDropoffLat = dropoffLat || 28.7041;
+      const finalDropoffLng = dropoffLng || 77.1025;
+
+      const estimate = await rideAPI.estimateFare(
+        pickupLat,
+        pickupLng,
+        finalDropoffLat,
+        finalDropoffLng
+      );
+
+      onNavigate('fare', {
+        pickupLatitude: pickupLat,
+        pickupLongitude: pickupLng,
+        dropoffLatitude: finalDropoffLat,
+        dropoffLongitude: finalDropoffLng,
+        pickupLocation,
+        dropoffLocation,
+        estimatedFare: estimate.totalFare || 125,
+      });
+    } catch (err) {
+      setError('Failed to estimate fare. Please try again.');
+      console.error('Fare estimation error:', err);
+    }
+  };
+
+  return (
+    <div className="screen">
+      <div className="header">Select Locations</div>
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div className="card">
+          <h4>Pickup Location</h4>
+          <p style={{ marginTop: '10px', color: '#666' }}>{pickupLocation}</p>
+          <button className="button secondary" onClick={handleGetLocation} style={{ width: '100%', marginTop: '10px' }}>
+            📍 Use Current Location
+          </button>
+        </div>
+
+        <div className="card">
+          <h4>Dropoff Location</h4>
+          <input
+            type="text"
+            value={dropoffLocation}
+            onChange={(e) => setDropoffLocation(e.target.value)}
+            placeholder="Enter destination"
+            style={{
+              width: '100%',
+              padding: '10px',
+              borderRadius: '8px',
+              border: '1px solid #ddd',
+              marginBottom: '10px',
+            }}
+          />
+          <p style={{ color: '#666', fontSize: '14px' }}>
+            {dropoffLat.toFixed(4)}, {dropoffLng.toFixed(4)}
+          </p>
+        </div>
+
+        {error && <div className="error">{error}</div>}
+
+        <button className="button" onClick={handleEstimateFare} style={{ width: '100%' }}>
+          🚕 Get Fare Estimate
+        </button>
+
+        <button className="button secondary" onClick={() => onNavigate('home')} style={{ width: '100%' }}>
+          ← Back
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default LocationSelectionScreen;

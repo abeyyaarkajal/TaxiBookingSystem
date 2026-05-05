@@ -1,0 +1,82 @@
+import React, { useState, useEffect } from 'react';
+import { rideAPI } from '../services/rideAPI';
+
+function FareEstimateScreen({ onNavigate, rideData }) {
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const initiateFare = () => {
+      setLoading(false);
+    };
+    initiateFare();
+  }, [rideData]);
+
+  const handleRequestRide = async () => {
+    setLoading(true);
+    try {
+      const riderId = Math.floor(Math.random() * 1000) + 1;
+      const response = await rideAPI.requestRide(
+        riderId,
+        rideData.pickupLatitude,
+        rideData.pickupLongitude,
+        rideData.dropoffLatitude,
+        rideData.dropoffLongitude,
+        rideData.estimatedFare,
+        rideData.pickupLocation || 'Pickup',
+        rideData.dropoffLocation || 'Dropoff'
+      );
+      onNavigate('searching', {
+        ...rideData,
+        rideId: response.id,
+        driverId: response.driverId,
+        status: response.status,
+      });
+    } catch (error) {
+      console.error('Error requesting ride:', error);
+      alert('Failed to request ride. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="screen">
+      <div className="header">Fare Estimate</div>
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <div className="card">
+          <h3 style={{ textAlign: 'center', color: '#667eea', fontSize: '32px' }}>
+            ₹{rideData?.estimatedFare || 125}
+          </h3>
+          <p style={{ textAlign: 'center', color: '#999' }}>Estimated fare</p>
+        </div>
+
+        <div className="card">
+          <h4>Trip Details</h4>
+          <p style={{ marginTop: '10px' }}>From: {rideData?.pickupLocation}</p>
+          <p>To: {rideData?.dropoffLocation}</p>
+        </div>
+
+        <div style={{ flex: 1 }} />
+
+        <button
+          className="button"
+          onClick={handleRequestRide}
+          disabled={loading}
+          style={{ width: '100%' }}
+        >
+          {loading ? '⏳ Requesting...' : '🚗 Request Ride'}
+        </button>
+
+        <button
+          className="button secondary"
+          onClick={() => onNavigate('location')}
+          style={{ width: '100%' }}
+        >
+          ← Change Location
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default FareEstimateScreen;

@@ -52,11 +52,15 @@ public class RideService {
         if (driver != null) {
             ride.setDriverId(driver.getId());
             driverMatchingService.markDriverAsUnavailable(driver.getId());
-            // Auto-accept for demo (in real app, driver would accept)
+        }
+
+        rideDatabase.put(ride.getId(), ride);
+
+        // Auto-accept for demo after saving the ride.
+        if (driver != null) {
             acceptRide(ride.getId());
         }
-        
-        rideDatabase.put(ride.getId(), ride);
+
         return ride;
     }
 

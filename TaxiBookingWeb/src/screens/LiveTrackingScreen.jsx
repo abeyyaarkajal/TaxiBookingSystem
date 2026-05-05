@@ -1,0 +1,89 @@
+import React, { useState, useEffect } from 'react';
+
+function LiveTrackingScreen({ onNavigate, rideData }) {
+  const [status, setStatus] = useState('enroute');
+  const [eta, setEta] = useState(8);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setEta(prev => {
+        if (prev <= 1) {
+          setStatus('arrived');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const getStatusMessage = () => {
+    if (status === 'arrived') return 'Driver has arrived at your pickup location';
+    return 'Driver is on the way';
+  };
+
+  return (
+    <div className="screen">
+      <div className="header">Live Tracking</div>
+
+      <div className="map-container">
+        📍 Live Map with Driver Position
+      </div>
+
+      <div className="card" style={{ marginTop: '10px' }}>
+        <h3 style={{ color: status === 'arrived' ? '#27ae60' : '#667eea' }}>
+          {getStatusMessage()}
+        </h3>
+
+        {status !== 'arrived' && (
+          <div style={{ marginTop: '10px', textAlign: 'center' }}>
+            <div style={{ fontSize: '36px', fontWeight: 'bold', color: '#667eea' }}>
+              {eta} min
+            </div>
+            <p style={{ color: '#999' }}>Estimated Time of Arrival</p>
+          </div>
+        )}
+
+        {status === 'arrived' && (
+          <button
+            className="button"
+            onClick={() => onNavigate('summary')}
+            style={{ width: '100%', marginTop: '15px' }}
+          >
+            🚪 Get in Vehicle
+          </button>
+        )}
+      </div>
+
+      <div className="card">
+        <h4>Driver Information</h4>
+        <p style={{ marginTop: '10px' }}>👤 Name: Raj Kumar</p>
+        <p>🚕 Vehicle: Swift DL01AB1234</p>
+        <p>⭐ Rating: 4.8/5.0</p>
+      </div>
+
+      <button
+        className="button secondary"
+        onClick={() => {}}
+        style={{ width: '100%' }}
+      >
+        📞 Call Driver
+      </button>
+
+      <button
+        className="button secondary"
+        onClick={() => {
+          if (window.confirm('Cancel this ride?')) {
+            onNavigate('home');
+          }
+        }}
+        style={{ width: '100%' }}
+      >
+        ✕ Cancel Ride
+      </button>
+    </div>
+  );
+}
+
+export default LiveTrackingScreen;
