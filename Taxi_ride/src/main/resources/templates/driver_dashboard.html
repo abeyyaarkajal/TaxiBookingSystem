@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Driver Dashboard</title>
+</head>
+<body>
+    <h1>Welcome, <span th:text="${driver.name}">Driver Name</span></h1>
+    <p>Phone: <span th:text="${driver.phoneNumber}">XXX</span></p>
+    <p>License #: <span th:text="${driver.licenseNumber}">XXX</span></p>
+    <p>Earnings: $<span th:text="${driver.earnings}">0.0</span></p>
+    <p>Status: <span th:text="${driver.available ? 'Available' : 'Unavailable'}"></span></p>
+    <form th:action="@{/driver/set-availability}" method="post">
+        <input type="hidden" th:name="id" th:value="${driver.id}" />
+        <button type="submit" name="available" value="true">Go Online</button>
+        <button type="submit" name="available" value="false">Go Offline</button>
+    </form>
+    <!-- Add links to trip history, feedback, etc. -->
+</body>
+</html>
